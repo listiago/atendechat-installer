@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Atendechat Restart Script
-# Versão: 1.0.0
+# Versão: 1.1.0
 # Descrição: Script para reiniciar aplicações do Atendechat
 
 set -e

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Atendechat Test Script
-# Versão: 1.0.0
+# Versão: 1.1.0
 # Descrição: Script para testar se a instalação foi bem-sucedida
 
 set -e
