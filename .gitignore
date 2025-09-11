@@ -1,0 +1,71 @@
+# Atendechat Installer .gitignore
+
+# Diretório do projeto clonado (não versionar)
+atendechat/
+
+# Arquivos de log
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Arquivos de backup
+*.bak
+*.backup
+*~
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de configuração locais
+.env.local
+.env.*.local
+
+# Cache e dependências locais
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos de build
+build/
+dist/
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de sistema Linux
+*~
+
+# Arquivos de configuração do Docker local
+docker-compose.override.yml
+
+# Certificados e chaves privadas
+*.pem
+*.key
+*.crt
+certs/
+
+# Arquivos de senha
+passwords.txt
+secrets.txt
+
+# Arquivos de backup de banco
+*.sql
+*.dump
+backups/
+
+# Logs do Docker
+docker-logs/
+
+# Arquivos de configuração do PM2 (se usado)
+ecosystem.config.js
+.pm2/
