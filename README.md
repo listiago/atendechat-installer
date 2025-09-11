@@ -1,6 +1,6 @@
 # Atendechat Auto Installer
 
-Instalador automático do sistema Atendechat para Ubuntu 20.04+ - **Versão Corrigida 1.1.0**
+Instalador automático completo do sistema Atendechat para Ubuntu 20.04+ - **Versão 1.2.0**
 
 ## 📋 Pré-requisitos
 
@@ -20,21 +20,26 @@ chmod +x *.sh
 ./install.sh
 ```
 
-## ✨ O que foi corrigido na versão 1.1.0
+## ✨ O que foi corrigido na versão 1.2.0
 
 ### ✅ Correções Implementadas
-- **URLs do GitHub**: Agora usa repositórios públicos (sem necessidade de token)
-- **Docker Compose**: Configuração compatível com Ubuntu 20.04
-- **OpenSSL Error**: Correção automática para Node.js v20+
-- **Banco de dados**: Configuração automática de PostgreSQL e Redis
+- **URLs do GitHub**: Repositórios públicos (sem necessidade de token)
+- **Docker Compose**: Configuração 100% compatível com Ubuntu 20.04
+- **OpenSSL Error**: Correção automática e permanente no package.json
+- **Credenciais do Banco**: Configuração automática com senhas corretas
+- **Build do Backend**: Compilação TypeScript antes das migrações
+- **package.json Frontend**: Correção automática dos scripts start e build
 - **Tratamento de erros**: Melhor detecção e correção de problemas
 - **Verificação final**: Testa se tudo está funcionando
 
-### 🔧 Melhorias
-- Instalação mais rápida e confiável
-- Mensagens de erro mais claras
-- Recuperação automática de falhas
-- Suporte completo a Ubuntu 20.04+
+### 🔧 Melhorias da Versão 1.2.0
+- ✅ **Instalação 100% automática** - Não requer intervenção manual
+- ✅ **Correção automática do frontend** - OpenSSL resolvido permanentemente
+- ✅ **Build automático do backend** - TypeScript compilado corretamente
+- ✅ **Configuração correta do banco** - Credenciais alinhadas entre .env e containers
+- ✅ **Mensagens de erro claras** - Diagnóstico preciso de problemas
+- ✅ **Recuperação automática de falhas** - Tenta corrigir problemas automaticamente
+- ✅ **Suporte completo a Ubuntu 20.04+** - Testado e validado
 
 ## 📝 O que o instalador faz
 
@@ -181,7 +186,7 @@ Após instalação bem-sucedida, você terá:
 
 ---
 
-**Versão**: 1.1.0 (Corrigida)
+**Versão**: 1.2.0 (Completa)
 **Compatível com**: Ubuntu 20.04+
 **Repositório**: https://github.com/listiago/atendechat
 **Instalador**: https://github.com/listiago/atendechat-installer

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Atendechat Auto Installer - Versão Corrigida
-# Versão: 1.1.0
-# Descrição: Instalador automático do sistema Atendechat com correções
+# Versão: 1.2.0
+# Descrição: Instalador automático completo com correções para frontend, backend e banco
 
 set -e
 
@@ -212,14 +212,14 @@ PORT=$BACKEND_PORT
 DB_DIALECT=postgres
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=$DB_USER
-DB_PASS=$DB_PASS
-DB_NAME=$DB_NAME
+DB_USER=atendechat
+DB_PASS=postgres_password_123
+DB_NAME=atendechat_db
 
 JWT_SECRET=$JWT_SECRET
 JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
 
-REDIS_URI=redis://:$REDIS_PASS@127.0.0.1:6379
+REDIS_URI=redis://:redis_password_123@127.0.0.1:6379
 REDIS_OPT_LIMITER_MAX=1
 REDIS_OPT_LIMITER_DURATION=3000
 
@@ -235,7 +235,7 @@ GERENCIANET_PIX_KEY=chave pix gerencianet
 
 MAIL_HOST="smtp.gmail.com"
 MAIL_USER="$USER_EMAIL"
-MAIL_PASS="SuaSenha"
+MAIL_PASS="$USER_PASSWORD"
 MAIL_FROM="$USER_EMAIL"
 MAIL_PORT="465"
 EOF
@@ -299,9 +299,31 @@ start_docker_containers() {
     cd ..
 }
 
+# Função para corrigir package.json do frontend
+fix_frontend_package() {
+    print_step "Corrigindo package.json do frontend..."
+
+    cd frontend
+
+    # Fazer backup
+    cp package.json package.json.backup
+
+    # Corrigir script start
+    sed -i 's/"start": "react-scripts start"/"start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start"/g' package.json
+
+    # Corrigir script build
+    sed -i 's/"build": "react-scripts build"/"build": "NODE_OPTIONS=--openssl-legacy-provider GENERATE_SOURCEMAP=false react-scripts build"/g' package.json
+
+    print_message "package.json do frontend corrigido"
+    cd ..
+}
+
 # Função para instalar dependências npm
 install_dependencies() {
     print_step "Instalando dependências do projeto..."
+
+    # Corrigir frontend primeiro
+    fix_frontend_package
 
     # Backend
     print_message "Instalando dependências do backend..."
@@ -325,6 +347,31 @@ install_dependencies() {
 
     cd ..
     print_message "Dependências instaladas com sucesso"
+}
+
+# Função para compilar backend
+build_backend() {
+    print_step "Compilando backend..."
+
+    cd backend
+
+    # Compilar TypeScript
+    npm run build
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Falha ao compilar backend"
+        exit 1
+    fi
+
+    # Verificar se pasta dist foi criada
+    if [[ -d "dist" ]]; then
+        print_success "Backend compilado com sucesso"
+    else
+        print_error "Pasta dist não foi criada"
+        exit 1
+    fi
+
+    cd ..
 }
 
 # Função para configurar banco de dados
@@ -404,8 +451,8 @@ verify_installation() {
 
 # Função principal
 main() {
-    print_message "=== ATENDECHAT AUTO INSTALLER v1.1.0 ==="
-    print_message "Instalador corrigido com suporte a repositórios públicos"
+    print_message "=== ATENDECHAT AUTO INSTALLER v1.2.0 ==="
+    print_message "Instalador completo com correções automáticas para frontend, backend e banco"
     print_message ""
 
     # Verificar sistema operacional
@@ -431,6 +478,9 @@ main() {
 
     # Instalar dependências
     install_dependencies
+
+    # Compilar backend
+    build_backend
 
     # Configurar banco de dados
     setup_database
