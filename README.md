@@ -126,6 +126,12 @@ Inicia automaticamente: containers Docker + backend + frontend
 ./test.sh
 ```
 
+### `create-admin.sh` - Criar usuário administrador ⭐ **NOVO**
+```bash
+./create-admin.sh
+```
+Cria usuário administrador manualmente se necessário
+
 ## 🔧 Solução de Problemas
 
 ### Docker não inicia
