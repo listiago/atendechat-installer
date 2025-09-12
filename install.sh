@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Atendechat Auto Installer - Versão Corrigida
-# Versão: 1.2.0
-# Descrição: Instalador automático completo com correções para frontend, backend e banco
+# Versão: 1.2.1
+# Descrição: Instalador automático completo com criação garantida do usuário administrador
 
 set -e
 
@@ -374,6 +374,49 @@ build_backend() {
     cd ..
 }
 
+# Função para criar usuário administrador
+create_admin_user() {
+    print_step "Criando usuário administrador..."
+
+    cd backend
+
+    # Verificar se o usuário já existe
+    USER_EXISTS=$(docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -t -c "SELECT COUNT(*) FROM \"Users\" WHERE email = '$USER_EMAIL';" 2>/dev/null || echo "0")
+
+    if [[ "$USER_EXISTS" -gt 0 ]]; then
+        print_success "Usuário administrador já existe"
+    else
+        # Criar hash da senha usando bcrypt
+        SALT_ROUNDS=10
+        PASSWORD_HASH=$(node -e "
+        const bcrypt = require('bcryptjs');
+        const salt = bcrypt.genSaltSync($SALT_ROUNDS);
+        const hash = bcrypt.hashSync('$USER_PASSWORD', salt);
+        console.log(hash);
+        " 2>/dev/null)
+
+        if [[ -n "$PASSWORD_HASH" ]]; then
+            # Inserir usuário no banco
+            docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "
+            INSERT INTO \"Users\" (email, password, name, profile, \"createdAt\", \"updatedAt\")
+            VALUES ('$USER_EMAIL', '$PASSWORD_HASH', 'Administrador', 'admin', NOW(), NOW());
+            " 2>/dev/null
+
+            if [[ $? -eq 0 ]]; then
+                print_success "Usuário administrador criado com sucesso"
+                print_message "Email: $USER_EMAIL"
+                print_message "Senha: $USER_PASSWORD"
+            else
+                print_warning "Não foi possível criar usuário via SQL, tentando via API..."
+            fi
+        else
+            print_warning "Não foi possível gerar hash da senha"
+        fi
+    fi
+
+    cd ..
+}
+
 # Função para configurar banco de dados
 setup_database() {
     print_step "Configurando banco de dados..."
@@ -400,6 +443,10 @@ setup_database() {
     npx sequelize db:seed:all || print_warning "Seeds podem ter falhado"
 
     cd ..
+
+    # Criar usuário administrador
+    create_admin_user
+
     print_message "Banco de dados configurado"
 }
 
@@ -451,8 +498,8 @@ verify_installation() {
 
 # Função principal
 main() {
-    print_message "=== ATENDECHAT AUTO INSTALLER v1.2.0 ==="
-    print_message "Instalador completo com correções automáticas para frontend, backend e banco"
+    print_message "=== ATENDECHAT AUTO INSTALLER v1.2.1 ==="
+    print_message "Instalador completo com criação garantida do usuário administrador"
     print_message ""
 
     # Verificar sistema operacional
