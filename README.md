@@ -207,6 +207,50 @@ Após instalação bem-sucedida, você terá:
 
 ---
 
+## 🛠️ Scripts de Gerenciamento (Desenvolvimento)
+
+### `install.sh` - Instalador completo
+```bash
+./install.sh
+```
+Instala todo o sistema automaticamente (uma vez)
+
+### `start.sh` - Iniciar sistema automaticamente ⭐
+```bash
+./start.sh
+```
+Inicia automaticamente: containers Docker + backend + frontend + migrations + seeds
+
+### `stop.sh` - Parar sistema completamente ⭐
+```bash
+./stop.sh
+```
+Para todos os processos Node.js e containers Docker corretamente
+
+### `status.sh` - Verificar status do sistema ⭐
+```bash
+./status.sh
+```
+Verifica status completo: Docker, containers, processos, aplicações e conectividade
+
+### `restart.sh` - Reiniciar aplicações
+```bash
+./restart.sh
+```
+
+### `test.sh` - Verificar conectividade
+```bash
+./test.sh
+```
+
+### `create-admin.sh` - Criar usuário administrador
+```bash
+./create-admin.sh
+```
+Cria usuário administrador manualmente se necessário
+
+---
+
 **Versão**: 1.2.0 (Completa)
 **Compatível com**: Ubuntu 20.04+
 **Repositório**: https://github.com/listiago/atendechat
