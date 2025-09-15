@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# AtendeChat - Script de Inicialização com PM2
-# Versão: 2.0.0
-# Descrição: Inicia todo o sistema automaticamente com PM2
+# AtendeChat - Script de Inicialização Simples
+# Versão: 1.0.0
+# Descrição: Inicia todo o sistema sem PM2 (processos em background)
 
 set -e
 
@@ -32,38 +32,6 @@ print_step() {
 
 print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-# Função para verificar se comando existe
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Função para verificar PM2
-check_pm2() {
-    if ! command_exists pm2; then
-        print_step "Instalando PM2..."
-
-        # Tentar instalar globalmente com sudo
-        if sudo npm install -g pm2 2>/dev/null; then
-            print_success "PM2 instalado com sucesso (sudo)"
-        else
-            print_warning "Não foi possível instalar PM2 globalmente"
-            print_message "Tentando instalar localmente..."
-
-            # Instalar localmente como fallback
-            if npm install pm2 --save-dev 2>/dev/null; then
-                # Adicionar ao PATH localmente
-                export PATH="$PWD/node_modules/.bin:$PATH"
-                print_success "PM2 instalado localmente"
-            else
-                print_error "Falha ao instalar PM2. Instale manualmente: sudo npm install -g pm2"
-                exit 1
-            fi
-        fi
-    else
-        print_success "PM2 já está instalado"
-    fi
 }
 
 # Função para verificar se Docker está rodando
@@ -181,32 +149,39 @@ setup_database() {
     print_success "Banco de dados configurado"
 }
 
-# Função para iniciar aplicações com PM2
-start_with_pm2() {
-    print_step "Iniciando aplicações com PM2..."
+# Função para iniciar aplicações em background
+start_applications() {
+    print_step "Iniciando aplicações em background..."
 
-    # Verificar se já existem processos PM2 rodando
-    if pm2 list | grep -q "atendechat"; then
-        print_warning "Aplicações já estão rodando no PM2"
-        print_message "Use './stop.sh' para parar ou 'pm2 restart ecosystem.config.js' para reiniciar"
-        return 0
-    fi
+    # Iniciar backend
+    print_message "Iniciando backend..."
+    cd atendechat/backend
+    nohup npm run dev:server > ../logs/backend.log 2>&1 &
+    BACKEND_PID=$!
+    print_success "Backend iniciado (PID: $BACKEND_PID)"
+    cd ../..
 
-    # Iniciar aplicações com PM2
-    pm2 start ecosystem.config.js
+    # Aguardar backend iniciar
+    sleep 5
 
-    if [[ $? -ne 0 ]]; then
-        print_error "Falha ao iniciar aplicações com PM2"
-        exit 1
-    fi
+    # Iniciar frontend
+    print_message "Iniciando frontend..."
+    cd atendechat/frontend
+    nohup NODE_OPTIONS="--openssl-legacy-provider" npm start > ../logs/frontend.log 2>&1 &
+    FRONTEND_PID=$!
+    print_success "Frontend iniciado (PID: $FRONTEND_PID)"
+    cd ../..
 
-    print_success "Aplicações iniciadas com PM2"
-
-    # Salvar configuração PM2
-    pm2 save
-
-    # Mostrar status
-    pm2 list
+    print_message ""
+    print_warning "⚠️  IMPORTANTE: Os processos estão rodando em background"
+    print_warning "⚠️  Eles PARARÃO quando você fechar o terminal"
+    print_warning "⚠️  Para manter rodando, use screen/tmux ou PM2"
+    print_message ""
+    print_message "Para ver logs:"
+    print_message "  Backend: tail -f logs/backend.log"
+    print_message "  Frontend: tail -f logs/frontend.log"
+    print_message ""
+    print_message "Para parar: ./stop.sh"
 }
 
 # Função para verificar se tudo está funcionando
@@ -233,12 +208,9 @@ verify_system() {
 
 # Função principal
 main() {
-    print_message "=== ATENDECHAT - INICIALIZAÇÃO COM PM2 ==="
-    print_message "Iniciando todo o sistema automaticamente..."
+    print_message "=== ATENDECHAT - INICIALIZAÇÃO SIMPLES ==="
+    print_message "Iniciando todo o sistema (processos em background)..."
     print_message ""
-
-    # Verificar PM2
-    check_pm2
 
     # Verificar Docker
     check_docker
@@ -258,28 +230,22 @@ main() {
     # Configurar banco
     setup_database
 
-    # Iniciar aplicações com PM2
-    start_with_pm2
+    # Iniciar aplicações
+    start_applications
 
     # Verificar sistema
     verify_system
 
     print_message ""
-    print_message "=== SISTEMA TOTALMENTE OPERACIONAL ==="
-    print_message "AtendeChat está rodando com PM2!"
+    print_message "=== SISTEMA INICIADO ==="
+    print_message "AtendeChat está rodando!"
     print_message ""
-    print_message "✅ Processos persistem após fechar terminal"
-    print_message "✅ Monitoramento automático ativo"
-    print_message "✅ Restart automático em caso de falha"
+    print_message "⚠️  AVISO: Processos param ao fechar terminal"
+    print_message "💡 Para manter rodando: use screen/tmux ou PM2"
     print_message ""
     print_message "Acesso:"
     print_message "  Frontend: http://localhost:3000"
     print_message "  Backend:  http://localhost:8080"
-    print_message ""
-    print_message "Comandos PM2:"
-    print_message "  Status: pm2 status"
-    print_message "  Logs: pm2 logs"
-    print_message "  Monitor: pm2 monit"
     print_message ""
     print_message "Para parar: ./stop.sh"
     print_message "Para verificar: ./status.sh"

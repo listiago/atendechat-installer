@@ -22,12 +22,21 @@ chmod +x *.sh
 
 ## ⚡ Início Rápido (Após Instalação)
 
+### **Opção 1: Com PM2 (Recomendado)**
 ```bash
 # Iniciar tudo automaticamente com PM2
 ./start.sh
 ```
+**Vantagens:** Processos persistem após fechar terminal, monitoramento automático.
 
-Este comando inicia: containers Docker + backend + frontend + PM2 (persistência)
+### **Opção 2: Inicialização Simples**
+```bash
+# Iniciar sem PM2 (processos param ao fechar terminal)
+./start-simple.sh
+```
+**Vantagens:** Mais rápido, sem dependências adicionais.
+
+**Ambos comandos iniciam:** containers Docker + backend + frontend + migrations + seeds
 
 ## ⚡ PM2 - Gerenciamento Avançado de Processos
 
@@ -137,11 +146,17 @@ Após instalação bem-sucedida:
 ./install.sh
 ```
 
-### `start.sh` - Iniciar sistema automaticamente ⭐ **NOVO**
+### `start.sh` - Iniciar sistema com PM2 ⭐ **NOVO**
 ```bash
 ./start.sh
 ```
-Inicia automaticamente: containers Docker + backend + frontend
+Inicia automaticamente: containers Docker + backend + frontend + PM2 (persistência)
+
+### `start-simple.sh` - Iniciar sistema simples ⭐ **NOVO**
+```bash
+./start-simple.sh
+```
+Inicia sem PM2: containers Docker + backend + frontend (processos param ao fechar terminal)
 
 ### `restart.sh` - Reiniciar aplicações
 ```bash
