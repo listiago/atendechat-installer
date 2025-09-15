@@ -23,11 +23,43 @@ chmod +x *.sh
 ## ⚡ Início Rápido (Após Instalação)
 
 ```bash
-# Iniciar tudo automaticamente
+# Iniciar tudo automaticamente com PM2
 ./start.sh
 ```
 
-Este comando inicia: containers Docker + backend + frontend
+Este comando inicia: containers Docker + backend + frontend + PM2 (persistência)
+
+## ⚡ PM2 - Gerenciamento Avançado de Processos
+
+O sistema utiliza **PM2** para gerenciamento profissional de processos:
+
+### ✅ Vantagens do PM2:
+- **Persistência**: Processos continuam rodando após fechar terminal
+- **Monitoramento**: CPU, memória, logs em tempo real
+- **Auto-restart**: Reinicia automaticamente em caso de falha
+- **Cluster**: Suporte a múltiplas instâncias
+- **Logs centralizados**: Fácil debug e troubleshooting
+
+### 🎮 Comandos PM2 Úteis:
+```bash
+# Ver status das aplicações
+pm2 status
+
+# Ver logs em tempo real
+pm2 logs
+
+# Monitor interativo
+pm2 monit
+
+# Reiniciar aplicação específica
+pm2 restart atendechat-backend
+
+# Parar todas as aplicações
+pm2 stop all
+
+# Interface web (opcional)
+pm2 plus
+```
 
 ## ✨ O que foi corrigido na versão 1.2.0
 

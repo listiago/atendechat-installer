@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Atendechat Stop Script
-# Versão: 1.1.0
-# Descrição: Script para parar aplicações do Atendechat
+# AtendeChat - Script de Parada com PM2
+# Versão: 2.0.0
+# Descrição: Para todo o sistema corretamente usando PM2
 
 set -e
 
@@ -30,119 +30,106 @@ print_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
-# Função para parar aplicações Node.js
-stop_applications() {
-    print_step "Parando aplicações Node.js..."
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
 
-    # Parar processos do backend
-    if pkill -f 'node.*server.ts' 2>/dev/null; then
-        print_message "Backend parado"
+# Função para parar aplicações PM2
+stop_pm2_apps() {
+    print_step "Parando aplicações PM2..."
+
+    # Verificar se existem processos PM2 rodando
+    if pm2 list | grep -q "atendechat"; then
+        # Parar aplicações
+        pm2 stop ecosystem.config.js
+        pm2 delete ecosystem.config.js
+
+        print_success "Aplicações PM2 paradas"
     else
-        print_warning "Nenhum processo de backend encontrado"
+        print_message "Nenhuma aplicação PM2 rodando"
     fi
-
-    # Parar processos do frontend
-    if pkill -f 'react-scripts start' 2>/dev/null; then
-        print_message "Frontend parado"
-    else
-        print_warning "Nenhum processo de frontend encontrado"
-    fi
-
-    # Aguardar processos terminarem
-    sleep 2
-
-    print_message "Aplicações Node.js paradas"
 }
 
 # Função para parar containers Docker
-stop_docker_containers() {
+stop_containers() {
     print_step "Parando containers Docker..."
 
-    if [[ -d "backend" ]]; then
-        cd backend
+    cd atendechat/backend
 
-        if [[ -f "docker-compose.databases.yml" ]]; then
-            docker-compose -f docker-compose.databases.yml down 2>/dev/null || print_warning "Falha ao parar containers"
-            print_message "Containers Docker parados"
-        else
-            print_warning "Arquivo docker-compose.databases.yml não encontrado"
-        fi
-
-        cd ..
+    # Verificar se containers estão rodando
+    if docker-compose -f docker-compose.databases.yml ps | grep -q "Up"; then
+        docker-compose -f docker-compose.databases.yml down
+        print_success "Containers Docker parados"
     else
-        print_warning "Diretório backend não encontrado"
+        print_message "Containers Docker não estavam rodando"
     fi
+
+    cd ../..
 }
 
 # Função para verificar se tudo foi parado
-check_status() {
-    print_step "Verificando status..."
+verify_stopped() {
+    print_step "Verificando se tudo foi parado..."
 
-    # Verificar processos Node.js
-    if ps aux | grep -E '(node|npm)' | grep -v grep > /dev/null; then
-        print_warning "Ainda há processos Node.js rodando:"
-        ps aux | grep -E '(node|npm)' | grep -v grep
+    # Verificar processos PM2
+    PM2_PROCESSES=$(pm2 list | grep -c "atendechat" || echo "0")
+    if [[ $PM2_PROCESSES -eq 0 ]]; then
+        print_success "✅ Todas as aplicações PM2 paradas"
     else
-        print_message "✅ Nenhum processo Node.js rodando"
+        print_warning "⚠️  Ainda há $PM2_PROCESSES aplicações PM2 rodando"
     fi
 
     # Verificar containers Docker
-    if docker ps | grep -E '(db_postgres|cache)' > /dev/null; then
-        print_warning "Ainda há containers Docker rodando:"
-        docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E '(db_postgres|cache)'
+    RUNNING_CONTAINERS=$(docker ps | grep -c "backend_" || echo "0")
+    if [[ $RUNNING_CONTAINERS -eq 0 ]]; then
+        print_success "✅ Todos os containers Docker parados"
     else
-        print_message "✅ Nenhum container Docker rodando"
+        print_warning "⚠️  Ainda há $RUNNING_CONTAINERS containers rodando"
     fi
 }
 
-# Função para limpeza opcional
-cleanup() {
-    read -p "Deseja fazer limpeza dos containers Docker? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_step "Fazendo limpeza dos containers..."
+# Função para mostrar status final
+show_final_status() {
+    print_step "Status final do sistema:"
 
-        # Parar e remover containers
-        docker-compose -f backend/docker-compose.databases.yml down -v 2>/dev/null || true
+    echo "=== Aplicações PM2 ==="
+    pm2 list --format "table {{.name}}\t{{.status}}\t{{.pid}}" | head -10
 
-        # Remover imagens não utilizadas
-        docker image prune -f
-
-        print_message "Limpeza concluída"
-    fi
+    echo ""
+    echo "=== Containers Docker ==="
+    docker ps --filter "name=atendechat" --filter "name=backend_" --format "table {{.Names}}\t{{.Status}}" || echo "Nenhum container rodando"
 }
 
 # Função principal
 main() {
-    print_message "=== ATENDECHAT STOP SCRIPT ==="
-    print_message "Parando aplicações..."
+    print_message "=== ATENDECHAT - PARADA COM PM2 ==="
+    print_message "Parando todo o sistema..."
     print_message ""
 
-    # Verificar se estamos no diretório correto
-    if [[ ! -d "backend" && ! -d "frontend" ]]; then
-        print_error "Diretórios backend/ e frontend/ não encontrados"
-        print_message "Execute este script dentro do diretório atendechat/"
-        exit 1
-    fi
-
-    # Parar aplicações
-    stop_applications
+    # Parar aplicações PM2
+    stop_pm2_apps
 
     # Parar containers Docker
-    stop_docker_containers
+    stop_containers
 
-    # Verificar status
-    check_status
+    # Verificar se tudo foi parado
+    verify_stopped
 
-    # Limpeza opcional
-    cleanup
+    # Mostrar status final
+    echo ""
+    show_final_status
 
     print_message ""
-    print_message "=== STOP CONCLUÍDO ==="
-    print_message "Todas as aplicações foram paradas!"
+    print_message "=== SISTEMA COMPLETAMENTE PARADO ==="
+    print_message "AtendeChat foi parado com sucesso!"
     print_message ""
-    print_message "Para reiniciar: ./restart.sh"
-    print_message "Para instalar novamente: ./install.sh"
+    print_message "Para iniciar novamente: ./start.sh"
+    print_message "Para verificar status: ./status.sh"
+    print_message ""
+    print_message "Comandos PM2 úteis:"
+    print_message "  Ver logs: pm2 logs"
+    print_message "  Ver status: pm2 status"
+    print_message "  Limpar logs: pm2 flush"
 }
 
 # Executar função principal

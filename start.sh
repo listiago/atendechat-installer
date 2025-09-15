@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Atendechat Start Script
-# Versão: 1.0.0
-# Descrição: Script para iniciar automaticamente o Atendechat
+# AtendeChat - Script de Inicialização com PM2
+# Versão: 2.0.0
+# Descrição: Inicia todo o sistema automaticamente com PM2
 
 set -e
 
@@ -32,6 +32,36 @@ print_step() {
 
 print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+# Função para verificar se comando existe
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Função para verificar PM2
+check_pm2() {
+    if ! command_exists pm2; then
+        print_step "Instalando PM2..."
+        npm install -g pm2
+
+        if [[ $? -ne 0 ]]; then
+            print_error "Falha ao instalar PM2"
+            exit 1
+        fi
+
+        print_success "PM2 instalado com sucesso"
+    else
+        print_success "PM2 já está instalado"
+    fi
+}
+
+# Função para verificar se Docker está rodando
+check_docker() {
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker não está rodando. Inicie o Docker primeiro."
+        exit 1
+    fi
 }
 
 # Função para verificar se diretório existe
@@ -77,7 +107,7 @@ wait_for_databases() {
     # Aguardar PostgreSQL
     print_message "Aguardando PostgreSQL..."
     for i in {1..30}; do
-        if docker exec atendechat_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
+        if docker exec backend_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
             print_success "PostgreSQL pronto!"
             break
         fi
@@ -87,7 +117,7 @@ wait_for_databases() {
     # Aguardar Redis
     print_message "Aguardando Redis..."
     for i in {1..10}; do
-        if docker exec atendechat_cache_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
+        if docker exec backend_cache_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
             print_success "Redis pronto!"
             break
         fi
@@ -98,44 +128,75 @@ wait_for_databases() {
     sleep 5
 }
 
-# Função para iniciar backend
-start_backend() {
-    print_step "Iniciando backend..."
+# Função para verificar e executar build do backend
+check_backend_build() {
+    print_step "Verificando build do backend..."
 
     cd atendechat/backend
 
-    # Verificar se já está rodando
-    if ps aux | grep -v grep | grep -q "ts-node-dev"; then
-        print_success "Backend já está rodando"
-    else
-        # Iniciar backend
-        npm run dev:server &
-        BACKEND_PID=$!
+    # Verificar se pasta dist existe e tem arquivos
+    if [[ ! -d "dist" ]] || [[ ! -f "dist/server.js" ]]; then
+        print_message "Executando build do backend..."
+        npm run build
 
-        print_success "Backend iniciado (PID: $BACKEND_PID)"
+        if [[ $? -ne 0 ]]; then
+            print_error "Falha no build do backend"
+            exit 1
+        fi
+
+        print_success "Backend compilado com sucesso"
+    else
+        print_success "Backend já está compilado"
     fi
 
-    cd ../..
+    cd ..
 }
 
-# Função para iniciar frontend
-start_frontend() {
-    print_step "Iniciando frontend..."
+# Função para configurar banco de dados
+setup_database() {
+    print_step "Configurando banco de dados..."
 
-    cd atendechat/frontend
+    cd atendechat/backend
 
-    # Verificar se já está rodando
-    if ps aux | grep -v grep | grep -q "react-scripts"; then
-        print_success "Frontend já está rodando"
-    else
-        # Iniciar frontend
-        npm start &
-        FRONTEND_PID=$!
+    # Executar migrations
+    print_message "Executando migrations..."
+    npm run db:migrate || print_warning "Algumas migrations podem já ter sido executadas"
 
-        print_success "Frontend iniciado (PID: $FRONTEND_PID)"
+    # Executar seeds
+    print_message "Executando seeds..."
+    npm run db:seed || print_warning "Seeds podem já ter sido executados"
+
+    cd ..
+
+    print_success "Banco de dados configurado"
+}
+
+# Função para iniciar aplicações com PM2
+start_with_pm2() {
+    print_step "Iniciando aplicações com PM2..."
+
+    # Verificar se já existem processos PM2 rodando
+    if pm2 list | grep -q "atendechat"; then
+        print_warning "Aplicações já estão rodando no PM2"
+        print_message "Use './stop.sh' para parar ou 'pm2 restart ecosystem.config.js' para reiniciar"
+        return 0
     fi
 
-    cd ../..
+    # Iniciar aplicações com PM2
+    pm2 start ecosystem.config.js
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Falha ao iniciar aplicações com PM2"
+        exit 1
+    fi
+
+    print_success "Aplicações iniciadas com PM2"
+
+    # Salvar configuração PM2
+    pm2 save
+
+    # Mostrar status
+    pm2 list
 }
 
 # Função para verificar se tudo está funcionando
@@ -143,7 +204,7 @@ verify_system() {
     print_step "Verificando sistema..."
 
     # Aguardar aplicações iniciarem
-    sleep 10
+    sleep 15
 
     # Verificar backend
     if curl -s --max-time 5 http://localhost:8080 > /dev/null 2>&1; then
@@ -162,9 +223,15 @@ verify_system() {
 
 # Função principal
 main() {
-    print_message "=== ATENDECHAT START SCRIPT ==="
-    print_message "Iniciando sistema automaticamente..."
+    print_message "=== ATENDECHAT - INICIALIZAÇÃO COM PM2 ==="
+    print_message "Iniciando todo o sistema automaticamente..."
     print_message ""
+
+    # Verificar PM2
+    check_pm2
+
+    # Verificar Docker
+    check_docker
 
     # Verificar diretório
     check_directory
@@ -175,25 +242,37 @@ main() {
     # Aguardar bancos
     wait_for_databases
 
-    # Iniciar backend
-    start_backend
+    # Verificar/compilar backend
+    check_backend_build
 
-    # Iniciar frontend
-    start_frontend
+    # Configurar banco
+    setup_database
+
+    # Iniciar aplicações com PM2
+    start_with_pm2
 
     # Verificar sistema
     verify_system
 
     print_message ""
-    print_message "=== SISTEMA INICIADO ==="
-    print_message "Atendechat está rodando!"
+    print_message "=== SISTEMA TOTALMENTE OPERACIONAL ==="
+    print_message "AtendeChat está rodando com PM2!"
+    print_message ""
+    print_message "✅ Processos persistem após fechar terminal"
+    print_message "✅ Monitoramento automático ativo"
+    print_message "✅ Restart automático em caso de falha"
     print_message ""
     print_message "Acesso:"
     print_message "  Frontend: http://localhost:3000"
-    print_message "  Backend: http://localhost:8080"
+    print_message "  Backend:  http://localhost:8080"
+    print_message ""
+    print_message "Comandos PM2:"
+    print_message "  Status: pm2 status"
+    print_message "  Logs: pm2 logs"
+    print_message "  Monitor: pm2 monit"
     print_message ""
     print_message "Para parar: ./stop.sh"
-    print_message "Para verificar: ./test.sh"
+    print_message "Para verificar: ./status.sh"
 }
 
 # Executar função principal

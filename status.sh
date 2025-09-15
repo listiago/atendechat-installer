@@ -76,15 +76,44 @@ check_containers() {
     fi
 }
 
-# Função para verificar processos Node.js
+# Função para verificar processos PM2
+check_pm2_processes() {
+    print_step "Verificando processos PM2..."
+
+    local backend_status="❌"
+    local frontend_status="❌"
+
+    # Verificar backend no PM2
+    if pm2 list | grep -q "atendechat-backend" && pm2 list | grep "atendechat-backend" | grep -q "online"; then
+        backend_status="✅"
+    fi
+
+    # Verificar frontend no PM2
+    if pm2 list | grep -q "atendechat-frontend" && pm2 list | grep "atendechat-frontend" | grep -q "online"; then
+        frontend_status="✅"
+    fi
+
+    echo "Backend (PM2): $backend_status"
+    echo "Frontend (PM2): $frontend_status"
+
+    if [[ $backend_status == "✅" && $frontend_status == "✅" ]]; then
+        print_success "Processos PM2 funcionando"
+        return 0
+    else
+        print_warning "Alguns processos PM2 com problemas"
+        return 1
+    fi
+}
+
+# Função para verificar processos Node.js (fallback)
 check_node_processes() {
-    print_step "Verificando processos Node.js..."
+    print_step "Verificando processos Node.js (fallback)..."
 
     local backend_status="❌"
     local frontend_status="❌"
 
     # Verificar backend
-    if ps aux | grep -v grep | grep -q "ts-node-dev"; then
+    if ps aux | grep -v grep | grep -q "ts-node-dev\|node.*server"; then
         backend_status="✅"
     fi
 
@@ -226,7 +255,14 @@ main() {
     # Verificações básicas
     check_docker || overall_status=1
     check_containers || overall_status=1
-    check_node_processes || overall_status=1
+
+    # Tentar PM2 primeiro, depois fallback para processos diretos
+    if command -v pm2 >/dev/null 2>&1; then
+        check_pm2_processes || overall_status=1
+    else
+        check_node_processes || overall_status=1
+    fi
+
     check_applications || overall_status=1
     check_database || overall_status=1
 
