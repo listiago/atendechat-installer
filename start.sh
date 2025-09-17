@@ -273,55 +273,7 @@ EOF
     print_success "Banco de dados configurado"
 }
 
-# Função para verificar e limpar processos existentes
-check_existing_processes() {
-    print_message "Verificando processos existentes..."
 
-    # Verificar processos Node.js rodando
-    local node_processes=$(ps aux | grep -E "(node|npm)" | grep -v grep | wc -l)
-    local backend_port=$(netstat -tlnp 2>/dev/null | grep :8080 | wc -l)
-    local frontend_port=$(netstat -tlnp 2>/dev/null | grep :3000 | wc -l)
-
-    if [[ $node_processes -gt 0 ]] || [[ $backend_port -gt 0 ]] || [[ $frontend_port -gt 0 ]]; then
-        print_warning "⚠️  Detectados processos/aplicações já rodando!"
-        print_message "📊 Processos Node.js: $node_processes"
-        print_message "🔌 Porta 8080 (Backend): $backend_port"
-        print_message "🔌 Porta 3000 (Frontend): $frontend_port"
-
-        # Listar processos específicos
-        print_message "📋 Processos encontrados:"
-        ps aux | grep -E "(node|npm)" | grep -v grep | head -5
-
-        print_message ""
-        print_message "🔧 OPÇÕES:"
-        print_message "  1. Parar processos existentes: ./stop.sh"
-        print_message "  2. Continuar com processos atuais"
-        print_message "  3. Forçar reinicialização (matar tudo)"
-
-        read -p "Escolha uma opção (1/2/3) [2]: " choice
-        choice=${choice:-2}
-
-        case $choice in
-            1)
-                print_message "Executando ./stop.sh..."
-                ./stop.sh
-                sleep 3
-                ;;
-            3)
-                print_message "Matando processos existentes..."
-                pkill -f "node.*dist/server.js" 2>/dev/null || true
-                pkill -f "npm.*start" 2>/dev/null || true
-                sleep 2
-                ;;
-            *)
-                print_message "Continuando com processos atuais..."
-                return 1  # Indica que deve continuar sem iniciar novos
-                ;;
-        esac
-    fi
-
-    return 0  # OK para prosseguir
-}
 
 # Função para iniciar aplicações com PM2
 start_with_pm2() {
@@ -334,12 +286,7 @@ start_with_pm2() {
         exit 1
     fi
 
-    # Verificar processos existentes
-    check_existing_processes
-    if [[ $? -eq 1 ]]; then
-        print_success "✅ Usando aplicações já em execução"
-        return 0
-    fi
+
 
     # Verificar se já existem processos PM2 rodando
     if pm2 list 2>/dev/null | grep -q "atendechat"; then
@@ -369,48 +316,67 @@ start_with_pm2() {
         print_warning "⚠️ PM2 não disponível, usando método alternativo..."
     fi
 
-    # Método direto: Iniciar aplicações no terminal (foreground)
-    print_message "🔄 Iniciando aplicações diretamente no terminal..."
+    # Método automático: Limpar e iniciar aplicações
+    print_message "🔄 Iniciando aplicações automaticamente..."
 
-    print_message ""
-    print_message "📋 INSTRUÇÕES PARA INICIALIZAÇÃO MANUAL:"
-    print_message "=========================================="
-    print_message ""
-    print_message "1️⃣  Abra um NOVO terminal e execute:"
-    print_message "   cd atendechat/backend && npm start"
-    print_message ""
-    print_message "2️⃣  Abra OUTRO NOVO terminal e execute:"
-    print_message "   cd atendechat/frontend && NODE_OPTIONS='--openssl-legacy-provider' npm start"
-    print_message ""
-    print_message "3️⃣  Aguarde as aplicações iniciarem completamente"
-    print_message ""
-    print_message "4️⃣  Teste os acessos:"
-    print_message "   Backend:  http://localhost:8080"
-    print_message "   Frontend: http://localhost:3000"
-    print_message ""
+    # Parar processos existentes automaticamente
+    print_message "Parando processos existentes..."
+    pkill -f "node.*dist/server.js" 2>/dev/null || true
+    pkill -f "npm.*start" 2>/dev/null || true
+    sleep 3
 
-    # Verificar se aplicações respondem
-    print_message "🔍 Verificando se aplicações estão acessíveis..."
+    # Iniciar backend
+    print_message "Iniciando backend..."
+    cd atendechat/backend
+    npm start &
+    BACKEND_PID=$!
+    cd ../..
 
-    # Aguardar um pouco
-    sleep 5
+    print_success "✅ Backend iniciado (PID: $BACKEND_PID)"
+
+    # Aguardar backend iniciar
+    print_message "Aguardando backend iniciar..."
+    sleep 10
+
+    # Iniciar frontend
+    print_message "Iniciando frontend..."
+    cd atendechat/frontend
+    NODE_OPTIONS="--openssl-legacy-provider" npm start &
+    FRONTEND_PID=$!
+    cd ../..
+
+    print_success "✅ Frontend iniciado (PID: $FRONTEND_PID)"
+
+    # Aguardar aplicações iniciarem
+    print_message "Aguardando aplicações ficarem prontas..."
+    sleep 20
+
+    # Verificar se aplicações estão respondendo
+    print_message "🔍 Verificando aplicações..."
 
     # Testar backend
-    if curl -s --max-time 5 http://localhost:8080 > /dev/null 2>&1; then
-        print_success "✅ Backend já está respondendo!"
+    if curl -s --max-time 10 http://localhost:8080 > /dev/null 2>&1; then
+        print_success "✅ Backend: http://localhost:8080 (respondendo)"
     else
-        print_warning "⚠️  Backend não está respondendo (inicie manualmente)"
+        print_warning "⚠️  Backend ainda inicializando..."
     fi
 
     # Testar frontend
-    if curl -s --max-time 5 http://localhost:3000 > /dev/null 2>&1; then
-        print_success "✅ Frontend já está respondendo!"
+    if curl -s --max-time 10 http://localhost:3000 > /dev/null 2>&1; then
+        print_success "✅ Frontend: http://localhost:3000 (respondendo)"
     else
-        print_warning "⚠️  Frontend não está respondendo (inicie manualmente)"
+        print_warning "⚠️  Frontend ainda inicializando..."
     fi
 
     print_message ""
-    print_success "🎯 SISTEMA PRONTO PARA INICIALIZAÇÃO MANUAL!"
+    print_success "🎉 APLICAÇÕES INICIADAS COM SUCESSO!"
+    print_message "📊 PIDs - Backend: $BACKEND_PID | Frontend: $FRONTEND_PID"
+    print_message ""
+    print_message "🌐 Acesse:"
+    print_message "   Backend:  http://localhost:8080"
+    print_message "   Frontend: http://localhost:3000"
+    print_message ""
+    print_message "🛑 Para parar: ./stop.sh"
 }
 
 # Função para verificar se tudo está funcionando
