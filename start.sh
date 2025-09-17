@@ -76,6 +76,13 @@ check_docker() {
 
 # Função para verificar se diretório existe
 check_directory() {
+    # Verificar se estamos no diretório correto
+    if [[ ! -f "start.sh" ]]; then
+        print_error "Execute o script do diretório raiz do projeto!"
+        print_message "Navegue para o diretório atendechat-installer e execute: ./start.sh"
+        exit 1
+    fi
+
     if [[ ! -d "atendechat" ]]; then
         print_error "Diretório 'atendechat' não encontrado!"
         print_message "Execute o instalador primeiro: ./install.sh"
@@ -87,16 +94,27 @@ check_directory() {
         print_message "Execute o instalador primeiro: ./install.sh"
         exit 1
     fi
+
+    print_message "Diretório atual: $(pwd)"
+    print_message "Estrutura verificada com sucesso"
 }
 
 # Função para iniciar containers
 start_containers() {
     print_step "Iniciando containers Docker..."
 
-    local backend_dir="$PWD/atendechat/backend"
+    # Garantir que estamos no diretório raiz
+    if [[ ! -f "start.sh" ]]; then
+        print_error "Erro: Não estamos no diretório raiz!"
+        print_message "Diretório atual: $(pwd)"
+        exit 1
+    fi
+
+    local backend_dir="./atendechat/backend"
 
     if [[ ! -d "$backend_dir" ]]; then
         print_error "Diretório backend não encontrado: $backend_dir"
+        print_message "Diretório atual: $(pwd)"
         exit 1
     fi
 
@@ -120,7 +138,7 @@ start_containers() {
         print_success "Containers Docker iniciados"
     fi
 
-    cd "$PWD/../.."
+    cd "../.."
 }
 
 # Função para aguardar bancos
@@ -155,10 +173,18 @@ wait_for_databases() {
 check_backend_build() {
     print_step "Verificando build do backend..."
 
-    local backend_dir="$PWD/atendechat/backend"
+    # Garantir que estamos no diretório raiz
+    if [[ ! -f "start.sh" ]]; then
+        print_error "Erro: Não estamos no diretório raiz!"
+        print_message "Diretório atual: $(pwd)"
+        exit 1
+    fi
+
+    local backend_dir="./atendechat/backend"
 
     if [[ ! -d "$backend_dir" ]]; then
         print_error "Diretório backend não encontrado: $backend_dir"
+        print_message "Diretório atual: $(pwd)"
         exit 1
     fi
 
@@ -179,17 +205,27 @@ check_backend_build() {
         print_success "Backend já está compilado"
     fi
 
-    cd "$PWD/.."
+    cd "../.."
 }
 
 # Função para configurar banco de dados
 setup_database() {
     print_step "Configurando banco de dados..."
 
-    local backend_dir="$PWD/atendechat/backend"
+    # Garantir que estamos no diretório raiz
+    if [[ ! -f "start.sh" ]]; then
+        print_error "Erro: Não estamos no diretório raiz!"
+        print_message "Diretório atual: $(pwd)"
+        exit 1
+    fi
+
+    local backend_dir="./atendechat/backend"
 
     if [[ ! -d "$backend_dir" ]]; then
         print_error "Diretório backend não encontrado: $backend_dir"
+        print_message "Diretório atual: $(pwd)"
+        print_message "Conteúdo do diretório atual:"
+        ls -la
         exit 1
     fi
 
@@ -203,7 +239,7 @@ setup_database() {
     print_message "Executando seeds..."
     npm run db:seed || print_warning "Seeds podem já ter sido executados"
 
-    cd "$PWD/.."
+    cd "../.."
 
     print_success "Banco de dados configurado"
 }
