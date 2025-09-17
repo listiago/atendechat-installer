@@ -295,25 +295,57 @@ start_with_pm2() {
         return 0
     fi
 
-    # Estratégia: Tentar PM2 primeiro, se falhar usar método direto mas persistente
-    print_message "Iniciando aplicações de forma persistente..."
+    # Estratégia: Usar PM2 prioritariamente para persistência máxima
+    print_message "Iniciando aplicações com PM2 para persistência máxima..."
 
-    # Tentar PM2 primeiro (método ideal)
-    if command_exists pm2 && [[ -f "ecosystem.config.js" ]]; then
-        print_message "✅ Usando PM2 para persistência máxima"
+    # Verificar PM2 e ecosystem.config.js
+    if ! command_exists pm2; then
+        print_error "❌ PM2 não está instalado!"
+        print_message "Instale com: sudo npm install -g pm2"
+        exit 1
+    fi
 
-        pm2 start ecosystem.config.js 2>/dev/null
+    if [[ ! -f "ecosystem.config.js" ]]; then
+        print_error "❌ Arquivo ecosystem.config.js não encontrado!"
+        print_message "Crie o arquivo de configuração do PM2"
+        exit 1
+    fi
 
-        if [[ $? -eq 0 ]]; then
-            print_success "✅ Aplicações iniciadas com PM2 (persistência garantida)"
-            pm2 save 2>/dev/null || true
-            pm2 list 2>/dev/null || true
-            return 0
-        else
-            print_warning "⚠️ PM2 falhou, tentando método alternativo..."
-        fi
+    print_success "✅ PM2 e configuração encontrados"
+
+    # Limpar processos existentes para evitar conflitos
+    print_message "Limpando processos existentes..."
+    pm2 kill 2>/dev/null || true
+    sleep 2
+
+    # Iniciar aplicações com PM2
+    print_message "Iniciando aplicações com PM2..."
+    pm2 start ecosystem.config.js
+
+    if [[ $? -eq 0 ]]; then
+        print_success "✅ Aplicações iniciadas com PM2!"
+
+        # Salvar configuração para persistência
+        pm2 save
+        print_success "✅ Configuração PM2 salva"
+
+        # Mostrar status
+        pm2 list
+
+        print_message ""
+        print_success "🎉 PM2 CONFIGURADO COM SUCESSO!"
+        print_message "📊 Aplicações agora têm persistência máxima"
+        print_message "🔄 Sobrevivem a fechamentos de terminal e reinicializações"
+        print_message ""
+        print_message "💡 Para configurar inicialização automática no boot:"
+        print_message "   pm2 startup"
+        print_message "   pm2 save"
+        print_message ""
+
+        return 0
     else
-        print_warning "⚠️ PM2 não disponível, usando método alternativo..."
+        print_error "❌ Falha ao iniciar com PM2"
+        exit 1
     fi
 
     # Método automático: Limpar e iniciar aplicações
