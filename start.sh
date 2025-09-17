@@ -81,13 +81,26 @@ check_directory() {
         print_message "Execute o instalador primeiro: ./install.sh"
         exit 1
     fi
+
+    if [[ ! -d "atendechat/backend" ]]; then
+        print_error "Diretório 'atendechat/backend' não encontrado!"
+        print_message "Execute o instalador primeiro: ./install.sh"
+        exit 1
+    fi
 }
 
 # Função para iniciar containers
 start_containers() {
     print_step "Iniciando containers Docker..."
 
-    cd atendechat/backend
+    local backend_dir="$PWD/atendechat/backend"
+
+    if [[ ! -d "$backend_dir" ]]; then
+        print_error "Diretório backend não encontrado: $backend_dir"
+        exit 1
+    fi
+
+    cd "$backend_dir"
 
     # Verificar se containers já estão rodando
     if docker-compose -f docker-compose.databases.yml ps | grep -q "Up"; then
@@ -107,7 +120,7 @@ start_containers() {
         print_success "Containers Docker iniciados"
     fi
 
-    cd ../..
+    cd "$PWD/../.."
 }
 
 # Função para aguardar bancos
@@ -142,7 +155,14 @@ wait_for_databases() {
 check_backend_build() {
     print_step "Verificando build do backend..."
 
-    cd atendechat/backend
+    local backend_dir="$PWD/atendechat/backend"
+
+    if [[ ! -d "$backend_dir" ]]; then
+        print_error "Diretório backend não encontrado: $backend_dir"
+        exit 1
+    fi
+
+    cd "$backend_dir"
 
     # Verificar se pasta dist existe e tem arquivos
     if [[ ! -d "dist" ]] || [[ ! -f "dist/server.js" ]]; then
@@ -159,14 +179,21 @@ check_backend_build() {
         print_success "Backend já está compilado"
     fi
 
-    cd ..
+    cd "$PWD/.."
 }
 
 # Função para configurar banco de dados
 setup_database() {
     print_step "Configurando banco de dados..."
 
-    cd atendechat/backend
+    local backend_dir="$PWD/atendechat/backend"
+
+    if [[ ! -d "$backend_dir" ]]; then
+        print_error "Diretório backend não encontrado: $backend_dir"
+        exit 1
+    fi
+
+    cd "$backend_dir"
 
     # Executar migrations
     print_message "Executando migrations..."
@@ -176,7 +203,7 @@ setup_database() {
     print_message "Executando seeds..."
     npm run db:seed || print_warning "Seeds podem já ter sido executados"
 
-    cd ..
+    cd "$PWD/.."
 
     print_success "Banco de dados configurado"
 }
@@ -186,10 +213,17 @@ start_with_pm2() {
     print_step "Iniciando aplicações com PM2..."
 
     # Verificar se já existem processos PM2 rodando
-    if pm2 list | grep -q "atendechat"; then
+    if pm2 list 2>/dev/null | grep -q "atendechat"; then
         print_warning "Aplicações já estão rodando no PM2"
         print_message "Use './stop.sh' para parar ou 'pm2 restart ecosystem.config.js' para reiniciar"
         return 0
+    fi
+
+    # Verificar se ecosystem.config.js existe
+    if [[ ! -f "ecosystem.config.js" ]]; then
+        print_error "Arquivo ecosystem.config.js não encontrado!"
+        print_message "Certifique-se de que o arquivo existe no diretório raiz"
+        exit 1
     fi
 
     # Iniciar aplicações com PM2
