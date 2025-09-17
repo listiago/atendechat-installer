@@ -231,13 +231,13 @@ setup_database() {
 
     cd "$backend_dir"
 
-    # Executar migrations
+    # Executar migrations (como no install.sh original)
     print_message "Executando migrations..."
-    npm run db:migrate || print_warning "Algumas migrations podem já ter sido executadas"
+    npx sequelize db:migrate || print_warning "Algumas migrações podem ter falhado"
 
-    # Executar seeds
+    # Executar seeds (como no install.sh original)
     print_message "Executando seeds..."
-    npm run db:seed || print_warning "Seeds podem já ter sido executados"
+    npx sequelize db:seed:all || print_warning "Seeds podem ter falhado"
 
     cd "../.."
 
@@ -264,10 +264,19 @@ start_with_pm2() {
 
     # Verificar se ecosystem.config.js existe
     if [[ ! -f "ecosystem.config.js" ]]; then
-        print_error "Arquivo ecosystem.config.js não encontrado!"
-        print_message "Diretório atual: $(pwd)"
-        print_message "Arquivos no diretório atual:"
-        ls -la
+        print_error "❌ CRÍTICO: Arquivo ecosystem.config.js não encontrado!"
+        print_message "📁 Diretório atual: $(pwd)"
+        print_message "📋 Arquivos encontrados:"
+        ls -la *.js *.json 2>/dev/null || echo "Nenhum arquivo JS/JSON encontrado"
+
+        print_message ""
+        print_error "🔧 SOLUÇÃO: O PM2 é ESSENCIAL para manter aplicações rodando!"
+        print_message "Execute estes comandos para corrigir:"
+        print_message "  1. sudo npm install -g pm2"
+        print_message "  2. Verifique se ecosystem.config.js existe no diretório raiz"
+        print_message "  3. Execute: ./start.sh novamente"
+        print_message ""
+        print_error "⚠️  SEM PM2: Aplicações PARARÃO ao fechar terminal/servidor!"
         exit 1
     fi
 
