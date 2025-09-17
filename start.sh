@@ -248,6 +248,13 @@ setup_database() {
 start_with_pm2() {
     print_step "Iniciando aplicações com PM2..."
 
+    # Garantir que estamos no diretório raiz
+    if [[ ! -f "start.sh" ]]; then
+        print_error "Erro: Não estamos no diretório raiz!"
+        print_message "Diretório atual: $(pwd)"
+        exit 1
+    fi
+
     # Verificar se já existem processos PM2 rodando
     if pm2 list 2>/dev/null | grep -q "atendechat"; then
         print_warning "Aplicações já estão rodando no PM2"
@@ -258,9 +265,13 @@ start_with_pm2() {
     # Verificar se ecosystem.config.js existe
     if [[ ! -f "ecosystem.config.js" ]]; then
         print_error "Arquivo ecosystem.config.js não encontrado!"
-        print_message "Certifique-se de que o arquivo existe no diretório raiz"
+        print_message "Diretório atual: $(pwd)"
+        print_message "Arquivos no diretório atual:"
+        ls -la
         exit 1
     fi
+
+    print_message "Arquivo ecosystem.config.js encontrado"
 
     # Iniciar aplicações com PM2
     pm2 start ecosystem.config.js
