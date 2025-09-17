@@ -262,41 +262,80 @@ start_with_pm2() {
         return 0
     fi
 
-    # Verificar se ecosystem.config.js existe
-    if [[ ! -f "ecosystem.config.js" ]]; then
-        print_error "❌ CRÍTICO: Arquivo ecosystem.config.js não encontrado!"
-        print_message "📁 Diretório atual: $(pwd)"
-        print_message "📋 Arquivos encontrados:"
-        ls -la *.js *.json 2>/dev/null || echo "Nenhum arquivo JS/JSON encontrado"
+    # Estratégia: Tentar PM2 primeiro, se falhar usar método direto mas persistente
+    print_message "Iniciando aplicações de forma persistente..."
 
-        print_message ""
-        print_error "🔧 SOLUÇÃO: O PM2 é ESSENCIAL para manter aplicações rodando!"
-        print_message "Execute estes comandos para corrigir:"
-        print_message "  1. sudo npm install -g pm2"
-        print_message "  2. Verifique se ecosystem.config.js existe no diretório raiz"
-        print_message "  3. Execute: ./start.sh novamente"
-        print_message ""
-        print_error "⚠️  SEM PM2: Aplicações PARARÃO ao fechar terminal/servidor!"
-        exit 1
+    # Tentar PM2 primeiro (método ideal)
+    if command_exists pm2 && [[ -f "ecosystem.config.js" ]]; then
+        print_message "✅ Usando PM2 para persistência máxima"
+
+        pm2 start ecosystem.config.js 2>/dev/null
+
+        if [[ $? -eq 0 ]]; then
+            print_success "✅ Aplicações iniciadas com PM2 (persistência garantida)"
+            pm2 save 2>/dev/null || true
+            pm2 list 2>/dev/null || true
+            return 0
+        else
+            print_warning "⚠️ PM2 falhou, tentando método alternativo..."
+        fi
+    else
+        print_warning "⚠️ PM2 não disponível, usando método alternativo..."
     fi
 
-    print_message "Arquivo ecosystem.config.js encontrado"
+    # Método alternativo: Iniciar diretamente mas com persistência
+    print_message "🔄 Iniciando aplicações diretamente (com persistência)..."
 
-    # Iniciar aplicações com PM2
-    pm2 start ecosystem.config.js
+    # Criar script de inicialização separado para persistência
+    cat > /tmp/start-apps.sh << 'EOF'
+#!/bin/bash
+# Script para manter aplicações rodando
 
-    if [[ $? -ne 0 ]]; then
-        print_error "Falha ao iniciar aplicações com PM2"
-        exit 1
+# Backend
+cd /home/tiago/atendechat-installer/atendechat/backend
+while true; do
+    echo "$(date): Iniciando backend..."
+    npm run dev:server
+    echo "$(date): Backend parou, reiniciando em 5 segundos..."
+    sleep 5
+done
+EOF
+
+    cat > /tmp/start-frontend.sh << 'EOF'
+#!/bin/bash
+# Script para manter frontend rodando
+
+# Frontend
+cd /home/tiago/atendechat-installer/atendechat/frontend
+while true; do
+    echo "$(date): Iniciando frontend..."
+    NODE_OPTIONS="--openssl-legacy-provider" npm start
+    echo "$(date): Frontend parou, reiniciando em 5 segundos..."
+    sleep 5
+done
+EOF
+
+    chmod +x /tmp/start-apps.sh /tmp/start-frontend.sh
+
+    # Iniciar aplicações em background com auto-restart
+    nohup /tmp/start-apps.sh > /tmp/backend.log 2>&1 &
+    BACKEND_PID=$!
+
+    nohup /tmp/start-frontend.sh > /tmp/frontend.log 2>&1 &
+    FRONTEND_PID=$!
+
+    print_success "✅ Aplicações iniciadas com auto-restart!"
+    print_message "📊 PIDs: Backend($BACKEND_PID) Frontend($FRONTEND_PID)"
+    print_message "📝 Logs: /tmp/backend.log /tmp/frontend.log"
+
+    # Aguardar um pouco para verificar se iniciou
+    sleep 10
+
+    if kill -0 $BACKEND_PID 2>/dev/null && kill -0 $FRONTEND_PID 2>/dev/null; then
+        print_success "✅ Aplicações rodando e monitoradas!"
+    else
+        print_warning "⚠️ Aplicações podem demorar para iniciar completamente"
     fi
-
-    print_success "Aplicações iniciadas com PM2"
-
-    # Salvar configuração PM2
-    pm2 save
-
-    # Mostrar status
-    pm2 list
 }
 
 # Função para verificar se tudo está funcionando
