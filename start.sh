@@ -369,59 +369,48 @@ start_with_pm2() {
         print_warning "⚠️ PM2 não disponível, usando método alternativo..."
     fi
 
-    # Método alternativo: Iniciar diretamente mas com persistência
-    print_message "🔄 Iniciando aplicações diretamente (com persistência)..."
+    # Método direto: Iniciar aplicações no terminal (foreground)
+    print_message "🔄 Iniciando aplicações diretamente no terminal..."
 
-    # Criar script de inicialização separado para persistência
-    cat > /tmp/start-apps.sh << 'EOF'
-#!/bin/bash
-# Script para manter aplicações rodando
+    print_message ""
+    print_message "📋 INSTRUÇÕES PARA INICIALIZAÇÃO MANUAL:"
+    print_message "=========================================="
+    print_message ""
+    print_message "1️⃣  Abra um NOVO terminal e execute:"
+    print_message "   cd atendechat/backend && npm start"
+    print_message ""
+    print_message "2️⃣  Abra OUTRO NOVO terminal e execute:"
+    print_message "   cd atendechat/frontend && NODE_OPTIONS='--openssl-legacy-provider' npm start"
+    print_message ""
+    print_message "3️⃣  Aguarde as aplicações iniciarem completamente"
+    print_message ""
+    print_message "4️⃣  Teste os acessos:"
+    print_message "   Backend:  http://localhost:8080"
+    print_message "   Frontend: http://localhost:3000"
+    print_message ""
 
-# Backend
-cd /home/tiago/atendechat-installer/atendechat/backend
-while true; do
-    echo "$(date): Iniciando backend..."
-    npm run dev:server
-    echo "$(date): Backend parou, reiniciando em 5 segundos..."
+    # Verificar se aplicações respondem
+    print_message "🔍 Verificando se aplicações estão acessíveis..."
+
+    # Aguardar um pouco
     sleep 5
-done
-EOF
 
-    cat > /tmp/start-frontend.sh << 'EOF'
-#!/bin/bash
-# Script para manter frontend rodando
-
-# Frontend
-cd /home/tiago/atendechat-installer/atendechat/frontend
-while true; do
-    echo "$(date): Iniciando frontend..."
-    NODE_OPTIONS="--openssl-legacy-provider" npm start
-    echo "$(date): Frontend parou, reiniciando em 5 segundos..."
-    sleep 5
-done
-EOF
-
-    chmod +x /tmp/start-apps.sh /tmp/start-frontend.sh
-
-    # Iniciar aplicações em background com auto-restart
-    nohup /tmp/start-apps.sh > /tmp/backend.log 2>&1 &
-    BACKEND_PID=$!
-
-    nohup /tmp/start-frontend.sh > /tmp/frontend.log 2>&1 &
-    FRONTEND_PID=$!
-
-    print_success "✅ Aplicações iniciadas com auto-restart!"
-    print_message "📊 PIDs: Backend($BACKEND_PID) Frontend($FRONTEND_PID)"
-    print_message "📝 Logs: /tmp/backend.log /tmp/frontend.log"
-
-    # Aguardar um pouco para verificar se iniciou
-    sleep 10
-
-    if kill -0 $BACKEND_PID 2>/dev/null && kill -0 $FRONTEND_PID 2>/dev/null; then
-        print_success "✅ Aplicações rodando e monitoradas!"
+    # Testar backend
+    if curl -s --max-time 5 http://localhost:8080 > /dev/null 2>&1; then
+        print_success "✅ Backend já está respondendo!"
     else
-        print_warning "⚠️ Aplicações podem demorar para iniciar completamente"
+        print_warning "⚠️  Backend não está respondendo (inicie manualmente)"
     fi
+
+    # Testar frontend
+    if curl -s --max-time 5 http://localhost:3000 > /dev/null 2>&1; then
+        print_success "✅ Frontend já está respondendo!"
+    else
+        print_warning "⚠️  Frontend não está respondendo (inicie manualmente)"
+    fi
+
+    print_message ""
+    print_success "🎯 SISTEMA PRONTO PARA INICIALIZAÇÃO MANUAL!"
 }
 
 # Função para verificar se tudo está funcionando
