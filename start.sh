@@ -439,18 +439,20 @@ verify_system() {
         print_message "  📝 Verifique os logs: tail -f /tmp/frontend.log"
     fi
 
-    # Verificar processos
-    print_message "Verificando processos..."
-    if kill -0 $BACKEND_PID 2>/dev/null; then
-        print_success "✅ Processo Backend ativo (PID: $BACKEND_PID)"
+    # Verificar processos com PM2
+    print_message "Verificando processos com PM2..."
+    if pm2 list 2>/dev/null | grep -q "atendechat-backend"; then
+        backend_pid=$(pm2 list 2>/dev/null | grep "atendechat-backend" | awk '{print $4}')
+        print_success "✅ Processo Backend ativo (PID: $backend_pid)"
     else
-        print_error "❌ Processo Backend não encontrado"
+        print_error "❌ Processo Backend não encontrado no PM2"
     fi
 
-    if kill -0 $FRONTEND_PID 2>/dev/null; then
-        print_success "✅ Processo Frontend ativo (PID: $FRONTEND_PID)"
+    if pm2 list 2>/dev/null | grep -q "atendechat-frontend"; then
+        frontend_pid=$(pm2 list 2>/dev/null | grep "atendechat-frontend" | awk '{print $4}')
+        print_success "✅ Processo Frontend ativo (PID: $frontend_pid)"
     else
-        print_error "❌ Processo Frontend não encontrado"
+        print_error "❌ Processo Frontend não encontrado no PM2"
     fi
 
     print_message ""
