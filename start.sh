@@ -273,6 +273,56 @@ EOF
     print_success "Banco de dados configurado"
 }
 
+# Função para verificar e limpar processos existentes
+check_existing_processes() {
+    print_message "Verificando processos existentes..."
+
+    # Verificar processos Node.js rodando
+    local node_processes=$(ps aux | grep -E "(node|npm)" | grep -v grep | wc -l)
+    local backend_port=$(netstat -tlnp 2>/dev/null | grep :8080 | wc -l)
+    local frontend_port=$(netstat -tlnp 2>/dev/null | grep :3000 | wc -l)
+
+    if [[ $node_processes -gt 0 ]] || [[ $backend_port -gt 0 ]] || [[ $frontend_port -gt 0 ]]; then
+        print_warning "⚠️  Detectados processos/aplicações já rodando!"
+        print_message "📊 Processos Node.js: $node_processes"
+        print_message "🔌 Porta 8080 (Backend): $backend_port"
+        print_message "🔌 Porta 3000 (Frontend): $frontend_port"
+
+        # Listar processos específicos
+        print_message "📋 Processos encontrados:"
+        ps aux | grep -E "(node|npm)" | grep -v grep | head -5
+
+        print_message ""
+        print_message "🔧 OPÇÕES:"
+        print_message "  1. Parar processos existentes: ./stop.sh"
+        print_message "  2. Continuar com processos atuais"
+        print_message "  3. Forçar reinicialização (matar tudo)"
+
+        read -p "Escolha uma opção (1/2/3) [2]: " choice
+        choice=${choice:-2}
+
+        case $choice in
+            1)
+                print_message "Executando ./stop.sh..."
+                ./stop.sh
+                sleep 3
+                ;;
+            3)
+                print_message "Matando processos existentes..."
+                pkill -f "node.*dist/server.js" 2>/dev/null || true
+                pkill -f "npm.*start" 2>/dev/null || true
+                sleep 2
+                ;;
+            *)
+                print_message "Continuando com processos atuais..."
+                return 1  # Indica que deve continuar sem iniciar novos
+                ;;
+        esac
+    fi
+
+    return 0  # OK para prosseguir
+}
+
 # Função para iniciar aplicações com PM2
 start_with_pm2() {
     print_step "Iniciando aplicações com PM2..."
@@ -282,6 +332,13 @@ start_with_pm2() {
         print_error "Erro: Não estamos no diretório raiz!"
         print_message "Diretório atual: $(pwd)"
         exit 1
+    fi
+
+    # Verificar processos existentes
+    check_existing_processes
+    if [[ $? -eq 1 ]]; then
+        print_success "✅ Usando aplicações já em execução"
+        return 0
     fi
 
     # Verificar se já existem processos PM2 rodando
