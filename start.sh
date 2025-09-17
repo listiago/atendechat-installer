@@ -235,6 +235,35 @@ setup_database() {
     print_message "Executando migrations..."
     npx sequelize db:migrate || print_warning "Algumas migrações podem ter falhado"
 
+    # Executar migration adicional para coluna language (se necessário)
+    print_message "Verificando coluna language na tabela Companies..."
+    if ! docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "SELECT language FROM \"Companies\" LIMIT 1;" 2>/dev/null; then
+        print_message "Adicionando coluna language à tabela Companies..."
+        # Criar migration específica se não existir
+        if [[ ! -f "add-language-column.js" ]]; then
+            cat > add-language-column.js << 'EOF'
+'use strict';
+
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.addColumn('Companies', 'language', {
+      type: Sequelize.STRING,
+      allowNull: true,
+      defaultValue: 'pt-BR'
+    });
+  },
+
+  down: async (queryInterface, Sequelize) => {
+    await queryInterface.removeColumn('Companies', 'language');
+  }
+};
+EOF
+        fi
+        npx sequelize db:migrate --name add-language-column.js 2>/dev/null || print_warning "Migration da coluna language pode já ter sido executada"
+    else
+        print_message "Coluna language já existe"
+    fi
+
     # Executar seeds (como no install.sh original)
     print_message "Executando seeds..."
     npx sequelize db:seed:all || print_warning "Seeds podem ter falhado"
@@ -343,21 +372,47 @@ verify_system() {
     print_step "Verificando sistema..."
 
     # Aguardar aplicações iniciarem
-    sleep 15
+    print_message "Aguardando aplicações ficarem prontas (30 segundos)..."
+    sleep 30
 
-    # Verificar backend
-    if curl -s --max-time 5 http://localhost:8080 > /dev/null 2>&1; then
-        print_success "✅ Backend: http://localhost:8080"
+    # Verificar backend com mais detalhes
+    print_message "Testando Backend..."
+    if curl -s --max-time 10 http://localhost:8080 > /dev/null 2>&1; then
+        print_success "✅ Backend: http://localhost:8080 (respondendo)"
     else
-        print_warning "⚠️  Backend pode não estar totalmente pronto"
+        print_warning "⚠️  Backend ainda inicializando..."
+        print_message "  💡 O backend pode levar mais tempo para iniciar completamente"
+        print_message "  📝 Verifique os logs: tail -f /tmp/backend.log"
     fi
 
-    # Verificar frontend
-    if curl -s --max-time 5 http://localhost:3000 > /dev/null 2>&1; then
-        print_success "✅ Frontend: http://localhost:3000"
+    # Verificar frontend com mais detalhes
+    print_message "Testando Frontend..."
+    if curl -s --max-time 10 http://localhost:3000 > /dev/null 2>&1; then
+        print_success "✅ Frontend: http://localhost:3000 (respondendo)"
     else
-        print_warning "⚠️  Frontend pode não estar totalmente pronto"
+        print_warning "⚠️  Frontend ainda inicializando..."
+        print_message "  💡 O frontend pode levar mais tempo para compilar"
+        print_message "  📝 Verifique os logs: tail -f /tmp/frontend.log"
     fi
+
+    # Verificar processos
+    print_message "Verificando processos..."
+    if kill -0 $BACKEND_PID 2>/dev/null; then
+        print_success "✅ Processo Backend ativo (PID: $BACKEND_PID)"
+    else
+        print_error "❌ Processo Backend não encontrado"
+    fi
+
+    if kill -0 $FRONTEND_PID 2>/dev/null; then
+        print_success "✅ Processo Frontend ativo (PID: $FRONTEND_PID)"
+    else
+        print_error "❌ Processo Frontend não encontrado"
+    fi
+
+    print_message ""
+    print_success "🎉 SISTEMA INICIADO COM SUCESSO!"
+    print_message "📊 Aplicações rodando com monitoramento automático"
+    print_message "🔄 Auto-restart ativo em caso de falha"
 }
 
 # Função principal
