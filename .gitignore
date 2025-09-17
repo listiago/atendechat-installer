@@ -66,6 +66,4 @@ backups/
 # Logs do Docker
 docker-logs/
 
-# Arquivos de configuração do PM2 (se usado)
-ecosystem.config.js
-.pm2/
+
