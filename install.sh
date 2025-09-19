@@ -292,10 +292,10 @@ start_docker_containers() {
     cd backend
 
     # Parar containers existentes se houver
-    docker-compose -f docker-compose.databases.yml down 2>/dev/null || true
+    sudo docker-compose -f docker-compose.databases.yml down 2>/dev/null || true
 
     # Iniciar containers
-    docker-compose -f docker-compose.databases.yml up -d
+    sudo docker-compose -f docker-compose.databases.yml up -d
 
     if [[ $? -ne 0 ]]; then
         print_error "Falha ao iniciar containers Docker"
@@ -388,7 +388,7 @@ create_admin_user() {
     cd backend
 
     # Verificar se o usuário já existe
-    USER_EXISTS=$(docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -t -c "SELECT COUNT(*) FROM \"Users\" WHERE email = '$USER_EMAIL';" 2>/dev/null || echo "0")
+    USER_EXISTS=$(sudo docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -t -c "SELECT COUNT(*) FROM \"Users\" WHERE email = '$USER_EMAIL';" 2>/dev/null || echo "0")
 
     if [[ "$USER_EXISTS" -gt 0 ]]; then
         print_success "Usuário administrador já existe"
@@ -404,7 +404,7 @@ create_admin_user() {
 
         if [[ -n "$PASSWORD_HASH" ]]; then
             # Inserir usuário no banco
-            docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "
+            sudo docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "
             INSERT INTO \"Users\" (email, password, name, profile, \"createdAt\", \"updatedAt\")
             VALUES ('$USER_EMAIL', '$PASSWORD_HASH', 'Administrador', 'admin', NOW(), NOW());
             " 2>/dev/null
@@ -433,7 +433,7 @@ setup_database() {
     sleep 15
 
     # Testar conexão
-    if docker exec backend_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
+    if sudo docker exec backend_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
         print_success "PostgreSQL está pronto"
     else
         print_warning "PostgreSQL pode não estar totalmente pronto, mas continuando..."
