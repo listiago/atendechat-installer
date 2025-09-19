@@ -121,14 +121,14 @@ start_containers() {
     cd "$backend_dir"
 
     # Verificar se containers já estão rodando
-    if docker-compose -f docker-compose.databases.yml ps | grep -q "Up"; then
+    if sudo docker-compose -f docker-compose.databases.yml ps | grep -q "Up"; then
         print_success "Containers já estão rodando"
     else
         # Parar containers existentes (se houver)
-        docker-compose -f docker-compose.databases.yml down 2>/dev/null || true
+        sudo docker-compose -f docker-compose.databases.yml down 2>/dev/null || true
 
         # Iniciar containers
-        docker-compose -f docker-compose.databases.yml up -d
+        sudo docker-compose -f docker-compose.databases.yml up -d
 
         if [[ $? -ne 0 ]]; then
             print_error "Falha ao iniciar containers Docker"
@@ -148,7 +148,7 @@ wait_for_databases() {
     # Aguardar PostgreSQL
     print_message "Aguardando PostgreSQL..."
     for i in {1..30}; do
-        if docker exec backend_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
+        if sudo docker exec backend_db_postgres_1 pg_isready -U atendechat -d atendechat_db 2>/dev/null; then
             print_success "PostgreSQL pronto!"
             break
         fi
@@ -158,7 +158,7 @@ wait_for_databases() {
     # Aguardar Redis
     print_message "Aguardando Redis..."
     for i in {1..10}; do
-        if docker exec backend_cache_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
+        if sudo docker exec backend_cache_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
             print_success "Redis pronto!"
             break
         fi
@@ -237,7 +237,7 @@ setup_database() {
 
     # Executar migration adicional para coluna language (se necessário)
     print_message "Verificando coluna language na tabela Companies..."
-    if ! docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "SELECT language FROM \"Companies\" LIMIT 1;" 2>/dev/null; then
+    if ! sudo docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -c "SELECT language FROM \"Companies\" LIMIT 1;" 2>/dev/null; then
         print_message "Adicionando coluna language à tabela Companies..."
         # Criar migration específica se não existir
         if [[ ! -f "add-language-column.js" ]]; then

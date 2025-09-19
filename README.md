@@ -1,6 +1,6 @@
 # Atendechat Auto Installer
 
-Instalador automático completo do sistema Atendechat para Ubuntu 20.04+ - **Versão 1.2.0**
+Instalador automático completo do sistema Atendechat para Ubuntu 20.04+ - **Versão 1.2.1**
 
 ## 📋 Pré-requisitos
 
@@ -70,7 +70,7 @@ pm2 stop all
 pm2 plus
 ```
 
-## ✨ O que foi corrigido na versão 1.2.0
+## ✨ O que foi corrigido na versão 1.2.1
 
 ### ✅ Correções Implementadas
 - **URLs do GitHub**: Repositórios públicos (sem necessidade de token)
@@ -81,8 +81,10 @@ pm2 plus
 - **package.json Frontend**: Correção automática dos scripts start e build
 - **Tratamento de erros**: Melhor detecção e correção de problemas
 - **Verificação final**: Testa se tudo está funcionando
+- **Docker Daemon**: Correção automática para iniciar serviço Docker
+- **Comandos Docker**: Adição de sudo para compatibilidade
 
-### 🔧 Melhorias da Versão 1.2.0
+### 🔧 Melhorias da Versão 1.2.1
 - ✅ **Instalação 100% automática** - Não requer intervenção manual
 - ✅ **Correção automática do frontend** - OpenSSL resolvido permanentemente
 - ✅ **Build automático do backend** - TypeScript compilado corretamente
@@ -90,6 +92,30 @@ pm2 plus
 - ✅ **Mensagens de erro claras** - Diagnóstico preciso de problemas
 - ✅ **Recuperação automática de falhas** - Tenta corrigir problemas automaticamente
 - ✅ **Suporte completo a Ubuntu 20.04+** - Testado e validado
+- ✅ **Persistência de dados** - Dados mantidos entre reinicializações
+- ✅ **Docker daemon automático** - Serviço iniciado automaticamente quando necessário
+
+### 🗄️ Persistência de Dados (NOVO)
+
+A partir da versão 1.2.1, o sistema agora mantém **todos os dados persistentes** entre reinicializações:
+
+#### ✅ O que é mantido:
+- **Dados do PostgreSQL**: Usuários, empresas, tickets, mensagens
+- **Dados do Redis**: Sessões, cache, configurações temporárias
+- **Configurações**: Usuários administradores, empresas criadas
+- **Histórico**: Todos os dados inseridos durante desenvolvimento/testes
+
+#### 🔄 Como funciona:
+- **Volumes Docker**: PostgreSQL e Redis usam volumes nomeados persistentes
+- **Verificação inteligente**: Sistema detecta se banco já foi configurado
+- **Migrações seletivas**: Só executa migrações na primeira instalação
+- **Seeds condicionais**: Seeds só rodam se banco estiver vazio
+
+#### 📊 Benefícios para desenvolvimento:
+- ✅ **Reinicializações rápidas**: Não perde dados ao reiniciar máquina
+- ✅ **Testes consistentes**: Dados permanecem entre sessões
+- ✅ **Desenvolvimento contínuo**: Trabalhe sem perder progresso
+- ✅ **Configuração uma vez**: Setup inicial persiste indefinidamente
 
 ## 📝 O que o instalador faz
 
@@ -298,7 +324,7 @@ Cria usuário administrador manualmente se necessário
 
 ---
 
-**Versão**: 1.2.0 (Completa)
+**Versão**: 1.2.1 (Completa)
 **Compatível com**: Ubuntu 20.04+
 **Repositório**: https://github.com/listiago/atendechat
 **Instalador**: https://github.com/listiago/atendechat-installer

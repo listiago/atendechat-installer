@@ -264,6 +264,8 @@ services:
     environment:
       - REDIS_PASSWORD=redis_password_123
     command: redis-server --requirepass redis_password_123
+    volumes:
+      - redis_data:/data
 
   db_postgres:
     image: postgres:13
@@ -273,6 +275,12 @@ services:
       - POSTGRES_DB=atendechat_db
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  postgres_data:
 EOF
 
     print_message "Docker Compose criado com sucesso"
@@ -441,13 +449,21 @@ setup_database() {
 
     cd backend
 
-    # Executar migrações
-    print_message "Executando migrações..."
-    npx sequelize db:migrate || print_warning "Algumas migrações podem ter falhado"
+    # Verificar se o banco já foi configurado (tabela Users existe)
+    DB_CONFIGURED=$(sudo docker exec backend_db_postgres_1 psql -U atendechat -d atendechat_db -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Users');" 2>/dev/null || echo "f")
 
-    # Executar seeds
-    print_message "Executando seeds..."
-    npx sequelize db:seed:all || print_warning "Seeds podem ter falhado"
+    if [[ "$DB_CONFIGURED" == " t" ]]; then
+        print_success "Banco de dados já foi configurado anteriormente"
+        print_message "Pulando migrações e seeds para preservar dados existentes"
+    else
+        # Executar migrações
+        print_message "Executando migrações..."
+        npx sequelize db:migrate || print_warning "Algumas migrações podem ter falhado"
+
+        # Executar seeds
+        print_message "Executando seeds..."
+        npx sequelize db:seed:all || print_warning "Seeds podem ter falhado"
+    fi
 
     cd ..
 
