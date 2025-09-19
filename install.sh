@@ -282,6 +282,13 @@ EOF
 start_docker_containers() {
     print_step "Iniciando containers Docker..."
 
+    # Garantir que o Docker daemon esteja rodando
+    if ! sudo systemctl is-active --quiet docker; then
+        print_message "Iniciando serviço Docker..."
+        sudo systemctl start docker
+        sleep 2
+    fi
+
     cd backend
 
     # Parar containers existentes se houver
